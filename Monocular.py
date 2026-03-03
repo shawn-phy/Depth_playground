@@ -1,25 +1,31 @@
 import cv2
+from ultralytics import YOLO
 
-# stop_cascade = cv2.CascadeClassifier('haarcascade_eye.xml')
-cap = cv2.VideoCapture(0)
+model = YOLO("yolov8n.pt")
+# model.to("cuda")  # remove if no GPU
 
-if not cap.isOpened():
-    print("Error: Could not open video source.")
-    exit()
+cap = cv2.VideoCapture(1)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+cap.set(cv2.CAP_PROP_FPS, 30)
+
+frame_count = 0
+annotated_frame = None
 
 while True:
-
+    ret, frame = cap.read()
     if not ret:
         break
 
-    img_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    found = stop_cascade.detectMultiScale(img_gray, minSize=(20, 20))
+    if frame_count % 2 == 0:
+        small = cv2.resize(frame, (320, 240))
+        results = model(small, verbose=False)  # verbose=False reduces console spam
+        annotated_frame = cv2.resize(results[0].plot(), (640, 480))
 
-    for (x, y, w, h) in found:
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    if annotated_frame is not None:
+        cv2.imshow("YOLO Detection", annotated_frame)
 
-    cv2.imshow("Live Feed", frame)
-
+    frame_count += 1
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
